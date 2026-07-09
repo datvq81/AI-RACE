@@ -1,0 +1,16 @@
+# Bỏ qua dữ liệu thô và file nén của BTC
+VAI_NVS_DATA/
+VAI_NVS_DATA.zip
+__MACOSX/
+
+# Bỏ qua dữ liệu dự án (quá nặng)
+var2026-digital-twin/data/
+
+# Bỏ qua kết quả training (Checkpoints, logs, renders)
+var2026-digital-twin/outputs/
+
+# Bỏ qua các file cache của môi trường Python/OS
+__pycache__/
+*.pyc
+.DS_Store
+*.log

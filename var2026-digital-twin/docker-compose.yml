@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  gs_pipeline:
+    build: .
+    container_name: bts_gs_container
+    volumes:
+      - .:/workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true

@@ -1,0 +1,1 @@
+docker compose exec gs_pipeline python scripts/inspect_scene.py
