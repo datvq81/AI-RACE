@@ -18,32 +18,81 @@ def qvec2rotmat(qvec):
         [2 * qvec[1] * qvec[3] - 2 * qvec[0] * qvec[2], 2 * qvec[2] * qvec[3] + 2 * qvec[0] * qvec[1], 1 - 2 * qvec[1]**2 - 2 * qvec[2]**2]
     ])
 
+# =========================================================================
+# MODULE MỚI: Đọc file nhị phân points3D.bin và xuất ra định dạng PLY
+# =========================================================================
+def extract_point_cloud(sparse_path, out_ply_path):
+    pts_file = os.path.join(sparse_path, "points3D.bin")
+    if not os.path.exists(pts_file):
+        print("[-] Không tìm thấy points3D.bin để tạo Point Cloud.")
+        return False
+        
+    print(f"[*] Đang trích xuất hạt mầm Point Cloud từ {pts_file}...")
+    with open(pts_file, "rb") as fid:
+        num_points = read_next_bytes(fid, 8, "Q")[0]
+        vertices = []
+        
+        for _ in range(num_points):
+            # Cấu trúc của COLMAP: 43 bytes = id(8) + xyz(24) + rgb(3) + error(8)
+            data = fid.read(43)
+            if not data: break
+            _, x, y, z, r, g, b, _ = struct.unpack("<QdddBBBd", data)
+            
+            # Đọc độ dài track và bỏ qua track elements
+            track_length = read_next_bytes(fid, 8, "Q")[0]
+            fid.seek(track_length * 8, os.SEEK_CUR)
+            
+            vertices.append((x, y, z, r, g, b))
+            
+    # Ghi dữ liệu ra định dạng chuẩn PLY (Binary Little Endian)
+    with open(out_ply_path, "wb") as f:
+        f.write(b"ply\n")
+        f.write(b"format binary_little_endian 1.0\n")
+        f.write(f"element vertex {len(vertices)}\n".encode('utf-8'))
+        f.write(b"property float x\n")
+        f.write(b"property float y\n")
+        f.write(b"property float z\n")
+        f.write(b"property uchar red\n")
+        f.write(b"property uchar green\n")
+        f.write(b"property uchar blue\n")
+        f.write(b"end_header\n")
+        
+        for v in vertices:
+            # Chuyển double (float64) về float32 để Nerfstudio đọc mượt mà
+            f.write(struct.pack("<fffBBB", v[0], v[1], v[2], v[3], v[4], v[5]))
+            
+    print(f"[+] Đã tạo thành công Point Cloud: {out_ply_path} ({len(vertices):,} điểm)")
+    return True
+
 def convert_scene(scene_dir):
     print(f"\n[>] Đang xử lý convert cho scene: {scene_dir}")
     sparse_path = os.path.join(scene_dir, "train", "sparse", "0")
     img_dir = os.path.join(scene_dir, "train", "images")
     out_json = os.path.join(scene_dir, "transforms.json")
+    out_ply = os.path.join(scene_dir, "sparse_pc.ply") # Đường dẫn file PLY đầu ra
 
-    # Đọc danh sách ảnh có thật trên ổ cứng
     if not os.path.exists(img_dir):
         print("[-] Không tìm thấy thư mục images.")
         return
     actual_images = set(os.listdir(img_dir))
     
-    # 1. Khởi tạo JSON
+    # KÍCH HOẠT HÀM TRÍCH XUẤT PLY
+    has_ply = extract_point_cloud(sparse_path, out_ply)
+    
+    # 1. Khởi tạo JSON (Tự động chèn ply_file_path nếu có file)
     out_data = {
-        "camera_model": "OPENCV",
-        "frames": []
+        "camera_model": "OPENCV"
     }
+    if has_ply:
+        out_data["ply_file_path"] = "sparse_pc.ply"
+        
+    out_data["frames"] = []
 
     # 2. Đọc Camera Intrinsics
     with open(os.path.join(sparse_path, "cameras.bin"), "rb") as fid:
         num_cameras = read_next_bytes(fid, 8, "Q")[0]
-        # Đọc camera đầu tiên
         _, model_id, width, height = read_next_bytes(fid, 24, "iiQQ")
         
-        # SIMPLE_RADIAL (id=2) thường có 4 tham số: f, cx, cy, k1.
-        # Xử lý linh hoạt số lượng tham số tùy chuẩn COLMAP
         params = []
         while True:
             try:
@@ -84,11 +133,9 @@ def convert_scene(scene_dir):
             num_points2D = read_next_bytes(fid, 8, "Q")[0]
             fid.seek(num_points2D * 24, os.SEEK_CUR)
             
-            # BỘ LỌC QUAN TRỌNG: Bỏ qua ảnh ảo
             if img_name not in actual_images:
                 continue
                 
-            # Đổi W2C thành C2W
             R_w2c = qvec2rotmat([qw, qx, qy, qz])
             t_w2c = np.array([tx, ty, tz])
             R_c2w = R_w2c.T
@@ -98,7 +145,6 @@ def convert_scene(scene_dir):
             c2w[0:3, 0:3] = R_c2w
             c2w[0:3, 3] = t_c2w
             
-            # ĐỔI TRỤC OPENCV SANG OPENGL (Nhân cột Y và Z với -1)
             c2w[0:3, 1:3] *= -1
             
             out_data["frames"].append({
@@ -107,11 +153,10 @@ def convert_scene(scene_dir):
             })
             valid_count += 1
 
-    # 4. Lưu kết quả
+    # 4. Lưu kết quả JSON
     with open(out_json, "w") as f:
         json.dump(out_data, f, indent=4)
     print(f"[+] Hoàn tất! Đã lưu {valid_count} ảnh hợp lệ vào {out_json}")
 
 if __name__ == "__main__":
-    # Thay đổi đường dẫn này để quét toàn bộ các scene sau này
     convert_scene("data/public/hcm0031")
