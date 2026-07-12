@@ -11,6 +11,18 @@ from pathlib import Path
 from nerfstudio.utils.eval_utils import eval_setup
 from nerfstudio.cameras.cameras import Cameras, CameraType
 
+import numpy  # Thêm dòng này nếu chưa có
+
+# Thêm 3 dòng này để cấp phép cho PyTorch 2.6 đọc checkpoint
+import torch.serialization
+torch.serialization.add_safe_globals([numpy.core.multiarray.scalar])
+
+original_load = torch.load
+def safe_load(*args, **kwargs):
+    kwargs['weights_only'] = False
+    return original_load(*args, **kwargs)
+torch.load = safe_load
+
 def qvec2rotmat(qvec):
     """Chuyển Quaternion (w, x, y, z) sang Ma trận xoay 3x3"""
     return np.array([
