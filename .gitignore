@@ -14,3 +14,8 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+
+command_note.md
+plan.md
+runpod_ssh_key.pub
+keys
