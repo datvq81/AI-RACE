@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "name": "a_baseline",
+  "description": "Ablation 2x2: scale regularization x rasterizer mode.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-big",
+    "iterations": 10000,
+    "seed": 42
+  },
+  "experiments": [
+    {
+      "id": "A1",
+      "description": "Scale regularization ON, classic rasterizer.",
+      "tag": "A1_scale_on_classic_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-scale-regularization", "True",
+        "--pipeline.model.rasterize-mode", "classic"
+      ]
+    },
+    {
+      "id": "A2",
+      "description": "Scale regularization OFF, classic rasterizer.",
+      "tag": "A2_scale_off_classic_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-scale-regularization", "False",
+        "--pipeline.model.rasterize-mode", "classic"
+      ]
+    },
+    {
+      "id": "A3a",
+      "description": "Scale regularization ON, antialiased rasterizer.",
+      "tag": "A3a_scale_on_antialiased_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-scale-regularization", "True",
+        "--pipeline.model.rasterize-mode", "antialiased"
+      ]
+    },
+    {
+      "id": "A3b",
+      "description": "Scale regularization OFF, antialiased rasterizer.",
+      "tag": "A3b_scale_off_antialiased_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-scale-regularization", "False",
+        "--pipeline.model.rasterize-mode", "antialiased"
+      ]
+    }
+  ]
+}

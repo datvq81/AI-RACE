@@ -1,4 +1,4 @@
-"""Train, render, and score one local-validation scene end to end."""
+"""Train and/or evaluate one local-validation scene."""
 
 from __future__ import annotations
 
@@ -48,6 +48,11 @@ def _contains_option(arguments: list[str], option: str) -> bool:
     return any(value == option or value.startswith(option + "=") for value in arguments)
 
 
+def _uses_stock_splatfacto_defaults(method: str) -> bool:
+    """Return whether this method accepts Nerfstudio's stock Splatfacto flags."""
+    return method == "splatfacto" or method.startswith("splatfacto-")
+
+
 def run_experiment(arguments: argparse.Namespace) -> Path:
     scene = _safe_name(arguments.scene, "scene")
     tag = _safe_name(arguments.tag, "tag")
@@ -74,6 +79,8 @@ def run_experiment(arguments: argparse.Namespace) -> Path:
         print(f"[SKIP] Reusing local split: {validation_scene}")
 
     configs = _complete_configs(experiment_name)
+    if arguments.eval_only and arguments.new_run:
+        raise ValueError("--eval-only cannot be combined with --new-run")
     if configs and arguments.new_run:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         experiment_name = f"{experiment_name}_{timestamp}"
@@ -82,6 +89,10 @@ def run_experiment(arguments: argparse.Namespace) -> Path:
     if configs:
         config = configs[0]
         print(f"[SKIP] Reusing completed checkpoint: {config}")
+    elif arguments.eval_only:
+        raise FileNotFoundError(
+            f"--eval-only requested but no complete checkpoint was found for {experiment_name}"
+        )
     else:
         extra_train_args = list(arguments.train_args)
         if extra_train_args and extra_train_args[0] == "--":
@@ -92,10 +103,11 @@ def run_experiment(arguments: argparse.Namespace) -> Path:
             arguments.method,
             "--experiment-name", experiment_name,
         ]
-        if not _contains_option(extra_train_args, "--pipeline.model.sh-degree"):
-            train_command.extend(["--pipeline.model.sh-degree", "3"])
-        if not _contains_option(extra_train_args, "--pipeline.model.use-scale-regularization"):
-            train_command.extend(["--pipeline.model.use-scale-regularization", "True"])
+        if _uses_stock_splatfacto_defaults(arguments.method):
+            if not _contains_option(extra_train_args, "--pipeline.model.sh-degree"):
+                train_command.extend(["--pipeline.model.sh-degree", "3"])
+            if not _contains_option(extra_train_args, "--pipeline.model.use-scale-regularization"):
+                train_command.extend(["--pipeline.model.use-scale-regularization", "True"])
         if not _contains_option(extra_train_args, "--max-num-iterations"):
             train_command.extend(["--max-num-iterations", str(arguments.iterations)])
         if not _contains_option(extra_train_args, "--viewer.quit-on-train-completion"):
@@ -107,6 +119,12 @@ def run_experiment(arguments: argparse.Namespace) -> Path:
         if not configs:
             raise RuntimeError(f"Training ended but no complete checkpoint was found for {experiment_name}")
         config = configs[0]
+
+    if arguments.train_only:
+        print(f"\n[OK] Training stage complete: {experiment_name}")
+        print(f"     config: {config}")
+        print(f"     checkpoint_dir: {config.parent / 'nerfstudio_models'}")
+        return config
 
     prediction_dir = arguments.prediction_root.resolve() / experiment_name
     _run(
@@ -142,7 +160,7 @@ def run_experiment(arguments: argparse.Namespace) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Create/reuse a holdout, then train, render, and score one scene."
+        description="Create/reuse a holdout, then train and/or evaluate one scene."
     )
     parser.add_argument("--scene", required=True, help="Scene name, for example HCM0421")
     parser.add_argument("--tag", required=True, help="Short experiment name, for example baseline10k")
@@ -156,6 +174,17 @@ def main() -> int:
     split_group.add_argument("--val-ratio", type=float)
     split_group.add_argument("--val-count", type=int)
     parser.add_argument("--rebuild-split", action="store_true")
+    stage_group = parser.add_mutually_exclusive_group()
+    stage_group.add_argument(
+        "--train-only",
+        action="store_true",
+        help="Stop after a complete checkpoint is available; do not load/render/score it",
+    )
+    stage_group.add_argument(
+        "--eval-only",
+        action="store_true",
+        help="Require an existing checkpoint and only render/score it",
+    )
     parser.add_argument(
         "--new-run",
         action="store_true",
