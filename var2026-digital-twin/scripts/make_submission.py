@@ -7,13 +7,15 @@ from PIL import Image
 # CẤU HÌNH ĐƯỜNG DẪN THEO CẤU TRÚC THỰC TẾ
 # ==========================================
 PRED_DIR = "data/predictions"
-SEARCH_DIRS = ["data/public", "data/private_test1"] 
+# Keep the ZIP scene set identical to check_submission.py: include every scene
+# under private_test1, including bonsai/chair when they are official entries.
+SEARCH_DIRS = ["data/private_test1"]
 OUTPUT_ZIP = "submission_round1.zip"
 
 def find_csv(scene_name):
     """Tìm file CSV tọa độ bên trong thư mục test/ của mỗi scene"""
     for d in SEARCH_DIRS:
-        for csv_name in ["test_poses.csv"]:
+        for csv_name in ["test_poses.csv", "test_pose.csv"]:
             csv_path = os.path.join(d, scene_name, "test", csv_name)
             if os.path.exists(csv_path):
                 return csv_path
@@ -26,7 +28,13 @@ def create_submission():
         print(f"[-] Lỗi: Không tìm thấy thư mục {PRED_DIR}")
         return
 
-    scenes = [s for s in os.listdir(PRED_DIR) if os.path.isdir(os.path.join(PRED_DIR, s))]
+    scenes = sorted({
+        scene
+        for data_dir in SEARCH_DIRS
+        if os.path.isdir(data_dir)
+        for scene in os.listdir(data_dir)
+        if os.path.isdir(os.path.join(data_dir, scene))
+    })
     if not scenes:
         print(f"[-] Lỗi: Thư mục {PRED_DIR} trống. Hãy chạy render trước!")
         return

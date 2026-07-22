@@ -1,18 +1,23 @@
 """Tự động convert, train và render toàn bộ scene."""
 
+import argparse
 import csv
 import glob
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Dict, List, Optional, Tuple
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIRS = [PROJECT_ROOT / "data/private_test1", PROJECT_ROOT / "data/public"]
+# private_test1 is the authoritative leaderboard scene set. Every directory
+# under it is included, including bonsai/chair when they are present there.
+DATA_DIRS = [PROJECT_ROOT / "data/private_test1"]
 PRED_DIR = PROJECT_ROOT / "data/predictions"
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 RENDER_SCRIPT = PROJECT_ROOT / "scripts/render_test_pose.py"
@@ -20,6 +25,39 @@ CONVERT_SCRIPT = PROJECT_ROOT / "scripts/convert_var_to_nerfstudio.py"
 
 RENDERER_VERSION = "2.0-redistort"
 MANIFEST_FILENAME = ".render_manifest.json"
+
+
+@dataclass(frozen=True)
+class PipelinePreset:
+    """A reproducible training configuration for every submission scene."""
+
+    method: str
+    iterations: int
+    train_args: Tuple[str, ...]
+
+
+PRESETS = {
+    "a2": PipelinePreset(
+        method="splatfacto-big",
+        iterations=30000,
+        train_args=(
+            "--pipeline.model.sh-degree", "3",
+            "--pipeline.model.use-scale-regularization", "False",
+            "--pipeline.model.rasterize-mode", "classic",
+        ),
+    ),
+    "d1b": PipelinePreset(
+        method="splatfacto-perceptual",
+        iterations=20000,
+        train_args=(
+            "--pipeline.model.sh-degree", "3",
+            "--pipeline.model.use-scale-regularization", "False",
+            "--pipeline.model.rasterize-mode", "classic",
+            "--pipeline.model.lpips-loss-start-step", "6000",
+            "--pipeline.model.lpips-loss-weight", "0.03",
+        ),
+    ),
+}
 
 
 def _sha256_file(path: Path) -> str:
@@ -155,8 +193,8 @@ def _render_output_is_current(
     return True, "manifest và toàn bộ ảnh đều hợp lệ"
 
 
-def _find_configs(scene: str) -> List[Path]:
-    pattern = str(OUTPUTS_DIR / scene / "*" / "*" / "config.yml")
+def _find_configs(experiment_name: str) -> List[Path]:
+    pattern = str(OUTPUTS_DIR / experiment_name / "*" / "*" / "config.yml")
     configs = [Path(path).resolve() for path in glob.glob(pattern)]
     return sorted(configs, key=lambda path: path.stat().st_mtime, reverse=True)
 
@@ -170,7 +208,38 @@ def _run_checked(command: List[str]) -> None:
     subprocess.run(command, cwd=PROJECT_ROOT, check=True)
 
 
-def run_pipeline() -> None:
+def _budget_label(iterations: int) -> str:
+    return f"{iterations // 1000}k" if iterations % 1000 == 0 else f"{iterations}it"
+
+
+def _safe_run_tag(value: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", value):
+        raise ValueError("run tag may contain only letters, digits, dot, underscore, and hyphen")
+    return value
+
+
+def run_pipeline(
+    preset_name: str = "d1b",
+    iterations_override: Optional[int] = None,
+    seed: int = 42,
+    run_tag_override: Optional[str] = None,
+) -> int:
+    preset = PRESETS[preset_name]
+    iterations = iterations_override or preset.iterations
+    if iterations <= 0:
+        raise ValueError("iterations must be positive")
+    if seed < 0:
+        raise ValueError("seed must be non-negative")
+    run_tag = _safe_run_tag(
+        run_tag_override or f"{preset_name}_{_budget_label(iterations)}_s{seed}"
+    )
+
+    print(f"[*] Preset     : {preset_name}")
+    print(f"[*] Method     : {preset.method}")
+    print(f"[*] Iterations : {iterations}")
+    print(f"[*] Seed       : {seed}")
+    print(f"[*] Run tag    : {run_tag}")
+
     print("\n" + "=" * 60)
     print(" KHỞI ĐỘNG AUTO-PIPELINE HUẤN LUYỆN 3D")
     print("=" * 60)
@@ -182,15 +251,24 @@ def run_pipeline() -> None:
         print(f"[!] Không thể chạy bước convert tự động: {error}")
 
     scenes = get_all_scenes()
+    if not scenes:
+        print(f"[X] No scenes found under {DATA_DIRS[0]}")
+        return 1
+
+    failed_scenes: List[str] = []
     for scene, scene_path in sorted(scenes.items()):
         print(f"\n[>] ĐANG XỬ LÝ SCENE: {scene}")
+        experiment_name = f"submit_{run_tag}_{scene}"
         prediction_dir = PRED_DIR / scene
         csv_path = _find_pose_csv(scene_path)
         if csv_path is None:
+            failed_scenes.append(scene)
             print(f"    [X] Không tìm thấy test_poses.csv/test_pose.csv của {scene}.")
             continue
 
-        configs = _find_configs(scene)
+        # Search only this preset/budget/seed namespace. Otherwise an older A2
+        # checkpoint can silently shadow the requested D1b run.
+        configs = _find_configs(experiment_name)
 
         # Một output có manifest hợp lệ vẫn dùng được ngay cả khi checkpoint đã được dọn.
         current_config = None
@@ -209,38 +287,38 @@ def run_pipeline() -> None:
         else:
             if configs:
                 print("    [!] Config cũ không có checkpoint hoàn chỉnh; sẽ train lại.")
-            print("    [...] Đang huấn luyện 30.000 iterations...")
+            print(f"    [...] Đang huấn luyện {iterations:,} iterations với {preset.method}...")
             train_command = [
                 sys.executable,
                 "-m",
                 "nerfstudio.scripts.train",
-                "splatfacto-big",
+                preset.method,
                 "--experiment-name",
-                scene,
-                "--pipeline.model.sh-degree",
-                "3",
-                "--pipeline.model.use-scale-regularization",
-                "True",
+                experiment_name,
+                "--machine.seed",
+                str(seed),
                 "--max-num-iterations",
-                "30000",
+                str(iterations),
                 "--viewer.quit-on-train-completion",
                 "True",
-                "--data",
-                str(scene_path),
             ]
+            train_command.extend(preset.train_args)
+            train_command.extend(["--data", str(scene_path)])
             try:
                 _run_checked(train_command)
             except (OSError, subprocess.CalledProcessError) as error:
                 print(f"    [X] Lỗi huấn luyện {scene}: {error}")
+                failed_scenes.append(scene)
                 continue
 
-            configs = _find_configs(scene)
+            configs = _find_configs(experiment_name)
             latest_config = next(
                 (config for config in configs if _has_checkpoint(config)),
                 None,
             )
             if latest_config is None:
                 print(f"    [X] Không tìm thấy checkpoint của {scene} sau khi train.")
+                failed_scenes.append(scene)
                 continue
 
         is_current, stale_reason = _render_output_is_current(
@@ -270,6 +348,7 @@ def run_pipeline() -> None:
             _run_checked(render_command)
         except (OSError, subprocess.CalledProcessError) as error:
             print(f"    [X] Lỗi render ảnh cho {scene}: {error}")
+            failed_scenes.append(scene)
             continue
 
         is_current, validation_reason = _render_output_is_current(
@@ -281,11 +360,51 @@ def run_pipeline() -> None:
             print(f"    [OK] Đã render và kiểm tra xong {scene}.")
         else:
             print(f"    [X] Render kết thúc nhưng output chưa hợp lệ: {validation_reason}")
+            failed_scenes.append(scene)
 
     print("\n" + "=" * 60)
-    print(" AUTO-PIPELINE ĐÃ HOÀN TẤT TOÀN BỘ CÁC TRẠM")
+    if failed_scenes:
+        print(f" AUTO-PIPELINE THẤT BẠI: {', '.join(sorted(set(failed_scenes)))}")
+        print(" Không tạo submission cho đến khi tất cả scene đều thành công.")
+        print("=" * 60)
+        return 1
+    print(f" AUTO-PIPELINE ĐÃ HOÀN TẤT {len(scenes)} SCENE VỚI PRESET {preset_name}")
     print("=" * 60)
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Train and render every official submission scene with a reproducible preset."
+    )
+    parser.add_argument(
+        "--preset",
+        choices=sorted(PRESETS),
+        default="d1b",
+        help="Training preset. d1b is the current local-validation winner.",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        help="Override the preset iteration budget; changes the checkpoint namespace.",
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--run-tag",
+        help="Optional output namespace. Do not reuse it for different effective settings.",
+    )
+    arguments = parser.parse_args()
+    try:
+        return run_pipeline(
+            preset_name=arguments.preset,
+            iterations_override=arguments.iterations,
+            seed=arguments.seed,
+            run_tag_override=arguments.run_tag,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    return 2
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    raise SystemExit(main())
