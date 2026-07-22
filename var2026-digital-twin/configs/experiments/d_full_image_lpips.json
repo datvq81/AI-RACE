@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "name": "d_full_image_lpips",
+  "description": "Full-image Alex-LPIPS loss ablation based on the winning A2 configuration.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-perceptual",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-start-step", "6000"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "D0",
+      "description": "Custom-method control with LPIPS training loss disabled.",
+      "tag": "D0_lpips_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.lpips-loss-weight", "0.0"
+      ]
+    },
+    {
+      "id": "D1a",
+      "description": "A2 plus full-image Alex-LPIPS from step 6000 with weight 0.01.",
+      "tag": "D1a_lpips_w001_s6k_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.lpips-loss-weight", "0.01"
+      ]
+    },
+    {
+      "id": "D1b",
+      "description": "A2 plus full-image Alex-LPIPS from step 6000 with weight 0.03.",
+      "tag": "D1b_lpips_w003_s6k_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.lpips-loss-weight", "0.03"
+      ]
+    }
+  ]
+}

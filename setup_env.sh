@@ -159,6 +159,7 @@ import torch
 import torchmetrics
 from nerfstudio.models.splatfacto import SplatfactoModel
 from var_nvs.edge_splatfacto import EdgeSplatfactoModel
+from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModel
 
 packages = (
     "nerfstudio",
@@ -185,7 +186,9 @@ PY
 if command -v ns-train >/dev/null 2>&1; then
     ns-train --help >/dev/null
     ns-train splatfacto-edge --help >/dev/null
+    ns-train splatfacto-perceptual --help >/dev/null
     echo "[OK] Custom method splatfacto-edge is registered."
+    echo "[OK] Custom method splatfacto-perceptual is registered."
     echo "[OK] Lệnh ns-train hoạt động."
 else
     echo "Không tìm thấy lệnh ns-train sau khi cài Nerfstudio" >&2

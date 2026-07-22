@@ -10,13 +10,13 @@ from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig
 from nerfstudio.plugins.types import MethodSpecification
 
 from var_nvs.edge_splatfacto import EdgeSplatfactoModelConfig
+from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModelConfig
 
 
-# This mirrors Nerfstudio 1.1.4's splatfacto-big TrainerConfig. Only the model
-# target and the new edge-loss fields differ, making weight=0 a useful control.
-splatfacto_edge = MethodSpecification(
-    config=TrainerConfig(
-        method_name="splatfacto-edge",
+def _splatfacto_big_config(method_name: str, model) -> TrainerConfig:
+    """Return Nerfstudio 1.1.4's splatfacto-big trainer around a custom model."""
+    return TrainerConfig(
+        method_name=method_name,
         steps_per_eval_image=100,
         steps_per_eval_batch=0,
         steps_per_save=2000,
@@ -28,14 +28,7 @@ splatfacto_edge = MethodSpecification(
                 dataparser=NerfstudioDataParserConfig(load_3D_points=True),
                 cache_images_type="uint8",
             ),
-            model=EdgeSplatfactoModelConfig(
-                cull_alpha_thresh=0.005,
-                continue_cull_post_densification=False,
-                densify_grad_thresh=0.0006,
-                sh_degree=3,
-                use_scale_regularization=False,
-                rasterize_mode="classic",
-            ),
+            model=model,
         ),
         optimizers={
             "means": {
@@ -86,6 +79,33 @@ splatfacto_edge = MethodSpecification(
         },
         viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
         vis="viewer",
+    )
+
+
+def _base_model_options() -> dict:
+    """Options that make both controls exactly match splatfacto-big/A2."""
+    return {
+        "cull_alpha_thresh": 0.005,
+        "continue_cull_post_densification": False,
+        "densify_grad_thresh": 0.0006,
+        "sh_degree": 3,
+        "use_scale_regularization": False,
+        "rasterize_mode": "classic",
+    }
+
+
+splatfacto_edge = MethodSpecification(
+    config=_splatfacto_big_config(
+        "splatfacto-edge",
+        EdgeSplatfactoModelConfig(**_base_model_options()),
     ),
     description="Splatfacto-big with an optional normalized Sobel edge loss.",
+)
+
+splatfacto_perceptual = MethodSpecification(
+    config=_splatfacto_big_config(
+        "splatfacto-perceptual",
+        PerceptualSplatfactoModelConfig(**_base_model_options()),
+    ),
+    description="Splatfacto-big with an optional differentiable full-image Alex-LPIPS loss.",
 )

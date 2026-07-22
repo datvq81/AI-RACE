@@ -112,3 +112,43 @@ python scripts/run_experiment_suite.py \
 uses weight `0.02`; `C1b` uses weight `0.05`. Compare C1a/C1b against C0 from
 the same suite because CUDA rasterization is not perfectly deterministic even
 when all effective options and the seed are identical.
+
+## Full-image LPIPS training method
+
+The repo also provides `splatfacto-perceptual`. It reuses Splatfacto's frozen
+Alex-LPIPS network and adds its differentiable result to the training loss over
+the complete rendered image. It does not crop patches or load a second AlexNet.
+
+The model options are:
+
+- `--pipeline.model.lpips-loss-weight`: non-negative LPIPS loss weight; zero is
+  the control behavior.
+- `--pipeline.model.lpips-loss-start-step`: first active step, default `6000`.
+  Splatfacto reaches full training resolution at this step with its standard
+  `num_downscales=2` and `resolution_schedule=3000` settings.
+- `--pipeline.model.lpips-loss-end-step`: first inactive step; `-1` keeps it
+  active until training ends.
+
+Install or refresh the editable method registration on an existing pod:
+
+```bash
+cd /workspace/AI-RACE/var2026-digital-twin
+python -m pip install --no-deps --editable .
+python -m nerfstudio.scripts.train splatfacto-perceptual --help >/dev/null
+```
+
+Then run the 20k control and weight screen:
+
+```bash
+python scripts/run_experiment_suite.py \
+  --suite configs/experiments/d_full_image_lpips.json \
+  --stage full \
+  --scene HCM0421 \
+  --iterations 20000 \
+  --seed 42 \
+  2>&1 | tee D_HCM0421_20k.log
+```
+
+`D0` disables LPIPS, `D1a` uses weight `0.01`, and `D1b` uses weight `0.03`.
+Compare D1a/D1b with D0 from this suite. Only promote a candidate if its gain
+is clearly larger than the small run-to-run noise observed in earlier controls.
