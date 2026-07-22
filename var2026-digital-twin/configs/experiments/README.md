@@ -77,3 +77,38 @@ Do not reuse a tag after changing its effective method or arguments. Choose a
 new experiment ID/tag, otherwise `run_local_validation.py` intentionally reuses
 the completed checkpoint under the old name. Use `--new-run` only when a
 timestamped duplicate is actually wanted.
+
+## Custom edge-loss method
+
+The repo provides `splatfacto-edge`, a package-owned extension of Nerfstudio
+1.1.4's `splatfacto-big`. It adds a normalized RGB Sobel-gradient L1 loss and
+does not modify `site-packages`:
+
+```bash
+python -m pip install --no-deps --editable .
+python -m nerfstudio.scripts.train splatfacto-edge --help
+```
+
+The model options are:
+
+- `--pipeline.model.edge-loss-weight`: non-negative loss weight; zero is the
+  control behavior.
+- `--pipeline.model.edge-loss-start-step`: first active step, default `0`.
+- `--pipeline.model.edge-loss-end-step`: first inactive step; `-1` means the
+  loss remains active.
+
+Run the prepared control and weight ablation with:
+
+```bash
+python scripts/run_experiment_suite.py \
+  --suite configs/experiments/c_edge_loss.json \
+  --stage full \
+  --scene HCM0421 \
+  --iterations 20000 \
+  --seed 42
+```
+
+`C0` validates that the subclass with weight zero matches the A2 family. `C1a`
+uses weight `0.02`; `C1b` uses weight `0.05`. Compare C1a/C1b against C0 from
+the same suite because CUDA rasterization is not perfectly deterministic even
+when all effective options and the seed are identical.

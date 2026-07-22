@@ -139,6 +139,15 @@ fi
 
 print_step 6 "Kiểm tra import và phiên bản đã cài"
 
+CUSTOM_METHOD_ROOT="${SCRIPT_DIR}/var2026-digital-twin"
+if [[ ! -f "${CUSTOM_METHOD_ROOT}/pyproject.toml" ]]; then
+    echo "Custom-method package not found: ${CUSTOM_METHOD_ROOT}/pyproject.toml" >&2
+    exit 1
+fi
+
+echo "[+] Registering repo-owned Nerfstudio methods from: ${CUSTOM_METHOD_ROOT}"
+run_pip_install --no-deps --editable "$CUSTOM_METHOD_ROOT"
+
 "$PYTHON_BIN" - <<'PY'
 from importlib.metadata import version
 
@@ -149,6 +158,7 @@ import nerfstudio
 import torch
 import torchmetrics
 from nerfstudio.models.splatfacto import SplatfactoModel
+from var_nvs.edge_splatfacto import EdgeSplatfactoModel
 
 packages = (
     "nerfstudio",
@@ -157,6 +167,7 @@ packages = (
     "torchmetrics",
     "lpips",
     "opencv-python",
+    "var2026-digital-twin-methods",
 )
 
 print("\nPhiên bản package:")
@@ -173,6 +184,8 @@ PY
 
 if command -v ns-train >/dev/null 2>&1; then
     ns-train --help >/dev/null
+    ns-train splatfacto-edge --help >/dev/null
+    echo "[OK] Custom method splatfacto-edge is registered."
     echo "[OK] Lệnh ns-train hoạt động."
 else
     echo "Không tìm thấy lệnh ns-train sau khi cài Nerfstudio" >&2

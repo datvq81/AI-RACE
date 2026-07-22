@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "name": "c_edge_loss",
+  "description": "Sobel edge-loss ablation based on the winning A2 configuration.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-edge",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "C0",
+      "description": "Custom-method control with edge loss disabled.",
+      "tag": "C0_edge_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.edge-loss-weight", "0.0"
+      ]
+    },
+    {
+      "id": "C1a",
+      "description": "A2 plus normalized RGB Sobel loss with weight 0.02.",
+      "tag": "C1a_edge_w002_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.edge-loss-weight", "0.02"
+      ]
+    },
+    {
+      "id": "C1b",
+      "description": "A2 plus normalized RGB Sobel loss with weight 0.05.",
+      "tag": "C1b_edge_w005_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.edge-loss-weight", "0.05"
+      ]
+    }
+  ]
+}

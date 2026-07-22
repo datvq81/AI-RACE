@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "var2026-digital-twin-methods"
+version = "0.1.0"
+description = "Custom Nerfstudio methods for the VAR 2026 digital-twin challenge."
+requires-python = ">=3.10"
+dependencies = ["nerfstudio==1.1.4"]
+
+[tool.setuptools.packages.find]
+include = ["var_nvs*"]
+
+[project.entry-points."nerfstudio.method_configs"]
+splatfacto-edge = "var_nvs.method_configs:splatfacto_edge"
