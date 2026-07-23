@@ -16,3 +16,4 @@ include = ["var_nvs*"]
 splatfacto-edge = "var_nvs.method_configs:splatfacto_edge"
 splatfacto-perceptual = "var_nvs.method_configs:splatfacto_perceptual"
 splatfacto-sky = "var_nvs.method_configs:splatfacto_sky"
+splatfacto-staged = "var_nvs.method_configs:splatfacto_staged"

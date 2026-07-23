@@ -14,6 +14,7 @@ from var_nvs.directional_background_splatfacto import (
     DirectionalBackgroundSplatfactoModelConfig,
 )
 from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModelConfig
+from var_nvs.staged_mse_splatfacto import StagedMSESplatfactoModelConfig
 
 
 def _splatfacto_big_config(method_name: str, model) -> TrainerConfig:
@@ -133,3 +134,11 @@ splatfacto_sky.config.optimizers["directional_background"] = {
         lr_pre_warmup=0,
     ),
 }
+
+splatfacto_staged = MethodSpecification(
+    config=_splatfacto_big_config(
+        "splatfacto-staged",
+        StagedMSESplatfactoModelConfig(**_base_model_options()),
+    ),
+    description="Splatfacto-perceptual with a configurable late-stage MSE objective.",
+)

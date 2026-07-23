@@ -183,3 +183,45 @@ python scripts/run_experiment_suite.py \
 
 The same suite also contains `D0` (directional background disabled) and `D1`
 (SH degree 2) if a same-subclass control or degree ablation is needed later.
+
+## Staged MSE fine-tuning
+
+The `splatfacto-staged` method extends the winning D1b full-image LPIPS model.
+Before the configured transition it leaves Splatfacto's main loss unchanged.
+After the transition, `staged_mse_weight` is transferred from L1 to MSE:
+
+```text
+before 15k: 0.80 L1 + 0.20 DSSIM + 0.03 LPIPS (LPIPS starts at 6k)
+after  15k: 0.45 L1 + 0.35 MSE + 0.20 DSSIM + 0.03 LPIPS
+```
+
+The model options are:
+
+- `--pipeline.model.staged-mse-weight`: weight transferred from L1 to MSE.
+- `--pipeline.model.staged-mse-start-step`: first active MSE step.
+- `--pipeline.model.staged-mse-end-step`: first inactive step; `-1` keeps it
+  active until training ends.
+
+Run the same-subclass control and F1 at 20k:
+
+```bash
+python scripts/run_experiment_suite.py \
+  --suite configs/experiments/f_staged_mse.json \
+  --stage full \
+  --scene HCM0421 \
+  --iterations 20000 \
+  --seed 42 \
+  --only F0,F1
+```
+
+Run only F1 when the existing D1b result is being used as the control:
+
+```bash
+python scripts/run_experiment_suite.py \
+  --suite configs/experiments/f_staged_mse.json \
+  --stage full \
+  --scene HCM0421 \
+  --iterations 20000 \
+  --seed 42 \
+  --only F1
+```

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "name": "f_staged_mse",
+  "description": "Late-stage MSE ablation on top of the winning D1b full-image LPIPS configuration.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-staged",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.03",
+      "--pipeline.model.lpips-loss-start-step", "6000",
+      "--pipeline.model.staged-mse-start-step", "15000",
+      "--pipeline.model.staged-mse-end-step", "-1"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "F0",
+      "description": "D1b control through the staged-loss subclass with MSE disabled.",
+      "tag": "F0_staged_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.staged-mse-weight", "0.0"
+      ]
+    },
+    {
+      "id": "F1",
+      "description": "D1b with 0.35 of the L1 weight transferred to MSE from step 15000.",
+      "tag": "F1_mse_w035_s15k_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.staged-mse-weight", "0.35"
+      ]
+    }
+  ]
+}
