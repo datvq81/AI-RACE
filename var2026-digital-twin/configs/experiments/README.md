@@ -152,3 +152,34 @@ python scripts/run_experiment_suite.py \
 `D0` disables LPIPS, `D1a` uses weight `0.01`, and `D1b` uses weight `0.03`.
 Compare D1a/D1b with D0 from this suite. Only promote a candidate if its gain
 is clearly larger than the small run-to-run noise observed in earlier controls.
+
+## Directional SH background
+
+The `splatfacto-sky` method keeps the D1b foreground and LPIPS objective, but
+renders the Gaussians over black and fills residual transmittance with a tiny
+learned RGB function of world-space ray direction. Degree three adds only 48
+trainable scalar coefficients and has negligible VRAM cost.
+
+The relevant model options are:
+
+- `--pipeline.model.use-directional-background`: enable the learned background.
+- `--pipeline.model.background-sh-degree`: SH degree from `0` through `3`.
+- `--pipeline.model.background-start-step`: delay background learning so early
+  geometry cannot immediately delegate all sky pixels to the background.
+- `--pipeline.model.background-init-color`: initial RGB tuple; the suite leaves
+  this at neutral gray.
+
+Run D2 alone, based on the winning D1b settings:
+
+```bash
+python scripts/run_experiment_suite.py \
+  --suite configs/experiments/d_directional_background.json \
+  --stage full \
+  --scene HCM0421 \
+  --iterations 20000 \
+  --seed 42 \
+  --only D2
+```
+
+The same suite also contains `D0` (directional background disabled) and `D1`
+(SH degree 2) if a same-subclass control or degree ablation is needed later.

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "name": "d_directional_background",
+  "description": "Directional-background ablation on top of the winning D1b LPIPS configuration.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-sky",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.03",
+      "--pipeline.model.lpips-loss-start-step", "6000",
+      "--pipeline.model.background-start-step", "1000"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "D0",
+      "description": "D1b control through the sky subclass with its directional background disabled.",
+      "tag": "D0_bg_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-directional-background", "False",
+        "--pipeline.model.background-sh-degree", "3"
+      ]
+    },
+    {
+      "id": "D1",
+      "description": "D1b plus a learned directional background with SH degree 2.",
+      "tag": "D1_bg_sh2_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-directional-background", "True",
+        "--pipeline.model.background-sh-degree", "2"
+      ]
+    },
+    {
+      "id": "D2",
+      "description": "D1b plus a learned directional background with SH degree 3.",
+      "tag": "D2_bg_sh3_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-directional-background", "True",
+        "--pipeline.model.background-sh-degree", "3"
+      ]
+    }
+  ]
+}

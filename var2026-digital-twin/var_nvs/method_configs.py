@@ -10,6 +10,9 @@ from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig
 from nerfstudio.plugins.types import MethodSpecification
 
 from var_nvs.edge_splatfacto import EdgeSplatfactoModelConfig
+from var_nvs.directional_background_splatfacto import (
+    DirectionalBackgroundSplatfactoModelConfig,
+)
 from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModelConfig
 
 
@@ -109,3 +112,24 @@ splatfacto_perceptual = MethodSpecification(
     ),
     description="Splatfacto-big with an optional differentiable full-image Alex-LPIPS loss.",
 )
+
+splatfacto_sky = MethodSpecification(
+    config=_splatfacto_big_config(
+        "splatfacto-sky",
+        DirectionalBackgroundSplatfactoModelConfig(**_base_model_options()),
+    ),
+    description="Splatfacto-perceptual with a learned directional SH background.",
+)
+
+# The directional sky has only 3 * (degree + 1)^2 parameters. A dedicated
+# optimizer keeps its learning rate independent from the millions of Gaussian
+# appearance parameters.
+splatfacto_sky.config.optimizers["directional_background"] = {
+    "optimizer": AdamOptimizerConfig(lr=5e-3, eps=1e-15),
+    "scheduler": ExponentialDecaySchedulerConfig(
+        lr_final=1e-4,
+        max_steps=30000,
+        warmup_steps=1000,
+        lr_pre_warmup=0,
+    ),
+}
