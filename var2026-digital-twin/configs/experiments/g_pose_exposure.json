@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "name": "g_pose_exposure",
+  "description": "Pose-conditioned global exposure correction ablation on top of D1b/F0.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-exposure",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.03",
+      "--pipeline.model.lpips-loss-start-step", "6000",
+      "--pipeline.model.exposure-start-step", "6000",
+      "--pipeline.model.exposure-hidden-dim", "32",
+      "--pipeline.model.exposure-position-scale", "1.0",
+      "--pipeline.model.exposure-gain-limit", "0.25",
+      "--pipeline.model.exposure-bias-limit", "0.10",
+      "--pipeline.model.exposure-regularization-weight", "0.001"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "G0",
+      "description": "D1b control through the exposure subclass with correction disabled.",
+      "tag": "G0_exposure_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-pose-exposure", "False"
+      ]
+    },
+    {
+      "id": "G1",
+      "description": "D1b plus bounded pose-conditioned RGB gain and bias from step 6000.",
+      "tag": "G1_pose_exposure_s6k_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-pose-exposure", "True"
+      ]
+    }
+  ]
+}

@@ -14,6 +14,7 @@ from var_nvs.directional_background_splatfacto import (
     DirectionalBackgroundSplatfactoModelConfig,
 )
 from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModelConfig
+from var_nvs.pose_exposure_splatfacto import PoseExposureSplatfactoModelConfig
 from var_nvs.staged_mse_splatfacto import StagedMSESplatfactoModelConfig
 
 
@@ -142,3 +143,16 @@ splatfacto_staged = MethodSpecification(
     ),
     description="Splatfacto-perceptual with a configurable late-stage MSE objective.",
 )
+
+splatfacto_exposure = MethodSpecification(
+    config=_splatfacto_big_config(
+        "splatfacto-exposure",
+        PoseExposureSplatfactoModelConfig(**_base_model_options()),
+    ),
+    description="Splatfacto-perceptual with novel-view-safe pose-conditioned exposure.",
+)
+
+splatfacto_exposure.config.optimizers["pose_exposure"] = {
+    "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+    "scheduler": None,
+}

@@ -225,3 +225,45 @@ python scripts/run_experiment_suite.py \
   --seed 42 \
   --only F1
 ```
+
+## Pose-conditioned exposure correction
+
+The `splatfacto-exposure` method extends D1b with a small continuous exposure
+head. It maps the camera's normalized world position and forward direction to
+an image-global RGB log-gain and RGB bias:
+
+```text
+pose_feature = concat(tanh(camera_center / position_scale), camera_forward)
+corrected_rgb = clamp(rendered_rgb * exp(log_gain) + bias, 0, 1)
+```
+
+The final layer is initialized to zero, so the correction initially equals the
+identity. Unlike a free embedding table indexed by training image, the pose MLP
+has a defined input for every novel test camera. The correction is bounded and
+L2-regularized to prevent it from replacing scene appearance with arbitrary
+per-view color changes.
+
+The model options are:
+
+- `--pipeline.model.use-pose-exposure`: enable correction.
+- `--pipeline.model.exposure-start-step`: first active training step.
+- `--pipeline.model.exposure-hidden-dim`: pose MLP width.
+- `--pipeline.model.exposure-position-scale`: position normalization divisor.
+- `--pipeline.model.exposure-gain-limit`: maximum absolute RGB log-gain.
+- `--pipeline.model.exposure-bias-limit`: maximum absolute RGB bias.
+- `--pipeline.model.exposure-regularization-weight`: gain/bias L2 weight.
+
+Run the paired 20k screen:
+
+```bash
+python scripts/run_experiment_suite.py \
+  --suite configs/experiments/g_pose_exposure.json \
+  --stage full \
+  --scene HCM0421 \
+  --iterations 20000 \
+  --seed 42 \
+  --only G0,G1
+```
+
+Do not add this method to `auto_pipeline.py` until G1 clearly beats G0 and
+passes a second-scene check.
