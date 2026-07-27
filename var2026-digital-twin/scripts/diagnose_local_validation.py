@@ -220,7 +220,10 @@ def _gaussian_blur(image: torch.Tensor, sigma: float) -> torch.Tensor:
     channels = image.shape[1]
     weight = kernel_2d.view(1, 1, *kernel_2d.shape).repeat(channels, 1, 1, 1)
     padded = F.pad(image, (radius, radius, radius, radius), mode="reflect")
-    return F.conv2d(padded, weight, groups=channels)
+    # The normalized kernel can still overshoot 1.0 by a few float32 ULPs.
+    # TorchMetrics LPIPS performs a strict [0, 1] range check, so clamp the
+    # filtered image back to the valid image domain.
+    return torch.clamp(F.conv2d(padded, weight, groups=channels), 0.0, 1.0)
 
 
 def _edge_statistics(
