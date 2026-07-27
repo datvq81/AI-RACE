@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "name": "h_residual_densification",
+  "description": "Residual/edge-aware redistribution of the existing gsplat AbsGrad densification signal.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-residual",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.03",
+      "--pipeline.model.lpips-loss-start-step", "6000",
+      "--pipeline.model.residual-densify-start-step", "6000",
+      "--pipeline.model.residual-densify-end-step", "-1",
+      "--pipeline.model.residual-densify-edge-weight", "1.0",
+      "--pipeline.model.residual-densify-smoothing-kernel", "5",
+      "--pipeline.model.residual-densify-min-multiplier", "0.25",
+      "--pipeline.model.residual-densify-max-multiplier", "3.0"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "H0",
+      "description": "D1b control through the residual-densification subclass.",
+      "tag": "H0_residual_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.residual-densify-blend", "0.0"
+      ]
+    },
+    {
+      "id": "H1a",
+      "description": "Conservative 50 percent blend of residual/edge priority into AbsGrad.",
+      "tag": "H1a_residual_blend050_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.residual-densify-blend", "0.5"
+      ]
+    },
+    {
+      "id": "H1b",
+      "description": "Full residual/edge-priority redistribution of AbsGrad.",
+      "tag": "H1b_residual_blend100_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.residual-densify-blend", "1.0"
+      ]
+    }
+  ]
+}

@@ -168,6 +168,7 @@ from var_nvs.edge_splatfacto import EdgeSplatfactoModel
 from var_nvs.directional_background_splatfacto import DirectionalBackgroundSplatfactoModel
 from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModel
 from var_nvs.pose_exposure_splatfacto import PoseExposureSplatfactoModel
+from var_nvs.residual_densification_splatfacto import ResidualDensificationSplatfactoModel
 from var_nvs.staged_mse_splatfacto import StagedMSESplatfactoModel
 
 packages = (
@@ -199,11 +200,13 @@ if command -v ns-train >/dev/null 2>&1; then
     ns-train splatfacto-sky --help >/dev/null
     ns-train splatfacto-staged --help >/dev/null
     ns-train splatfacto-exposure --help >/dev/null
+    ns-train splatfacto-residual --help >/dev/null
     echo "[OK] Custom method splatfacto-edge is registered."
     echo "[OK] Custom method splatfacto-perceptual is registered."
     echo "[OK] Custom method splatfacto-sky is registered."
     echo "[OK] Custom method splatfacto-staged is registered."
     echo "[OK] Custom method splatfacto-exposure is registered."
+    echo "[OK] Custom method splatfacto-residual is registered."
     echo "[OK] Lệnh ns-train hoạt động."
 else
     echo "Không tìm thấy lệnh ns-train sau khi cài Nerfstudio" >&2

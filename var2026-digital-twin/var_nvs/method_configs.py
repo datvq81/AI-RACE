@@ -1,7 +1,9 @@
 """Nerfstudio method specifications for the custom VAR models."""
 
 from nerfstudio.configs.base_config import ViewerConfig
-from nerfstudio.data.datamanagers.full_images_datamanager import FullImageDatamanagerConfig
+from nerfstudio.data.datamanagers.full_images_datamanager import (
+    FullImageDatamanagerConfig,
+)
 from nerfstudio.data.dataparsers.nerfstudio_dataparser import NerfstudioDataParserConfig
 from nerfstudio.engine.optimizers import AdamOptimizerConfig
 from nerfstudio.engine.schedulers import ExponentialDecaySchedulerConfig
@@ -9,12 +11,15 @@ from nerfstudio.engine.trainer import TrainerConfig
 from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig
 from nerfstudio.plugins.types import MethodSpecification
 
-from var_nvs.edge_splatfacto import EdgeSplatfactoModelConfig
 from var_nvs.directional_background_splatfacto import (
     DirectionalBackgroundSplatfactoModelConfig,
 )
+from var_nvs.edge_splatfacto import EdgeSplatfactoModelConfig
 from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModelConfig
 from var_nvs.pose_exposure_splatfacto import PoseExposureSplatfactoModelConfig
+from var_nvs.residual_densification_splatfacto import (
+    ResidualDensificationSplatfactoModelConfig,
+)
 from var_nvs.staged_mse_splatfacto import StagedMSESplatfactoModelConfig
 
 
@@ -156,3 +161,11 @@ splatfacto_exposure.config.optimizers["pose_exposure"] = {
     "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
     "scheduler": None,
 }
+
+splatfacto_residual = MethodSpecification(
+    config=_splatfacto_big_config(
+        "splatfacto-residual",
+        ResidualDensificationSplatfactoModelConfig(**_base_model_options()),
+    ),
+    description="D1b with bounded residual/edge-aware AbsGrad allocation.",
+)

@@ -315,3 +315,65 @@ python scripts/run_experiment_suite.py \
 
 Do not add this method to `auto_pipeline.py` until G1 clearly beats G0 and
 passes a second-scene check.
+
+## Residual/edge-aware densification
+
+Diagnostics on `HCM0421/F0-40k` and `bonsai/A2-30k` found no useful global
+shift or blur correction and only small affine-color upper bounds. The
+strongest 20 percent of ground-truth edge pixels contained 53.15 and 47.61
+percent of total squared error respectively.
+
+Nerfstudio 1.1.4 already calls gsplat with `absgrad=True` and accumulates
+`self.xys.absgrad`, so `splatfacto-residual` does not reimplement AbsGS. It
+builds a detached image-space priority map from RGB residual and
+ground-truth Sobel magnitude, samples that map at each visible Gaussian's
+projected center, and redistributes the existing AbsGrad accumulation.
+
+The multiplier is clamped and normalized to mean one. The initial experiment
+does not lower `densify_grad_thresh` or extend `stop_split_at`, which isolates
+allocation from global Gaussian growth.
+
+Install or refresh the method entry point:
+
+```bash
+python -m pip install --force-reinstall --no-deps --editable .
+python -m nerfstudio.scripts.train splatfacto-residual --help >/dev/null
+```
+
+Run a short smoke test first. This intentionally starts residual allocation at
+step zero so the custom callback is exercised without waiting for step 6000:
+
+```bash
+python scripts/run_local_validation.py \
+  --scene HCM0421 \
+  --tag H1a_residual_smoke_700 \
+  --method splatfacto-residual \
+  --iterations 700 \
+  --train-only \
+  -- \
+  --pipeline.model.sh-degree 3 \
+  --pipeline.model.use-scale-regularization False \
+  --pipeline.model.rasterize-mode classic \
+  --pipeline.model.lpips-loss-weight 0.0 \
+  --pipeline.model.residual-densify-blend 0.5 \
+  --pipeline.model.residual-densify-start-step 0
+```
+
+Then run the paired 20k control and conservative treatment:
+
+```bash
+python scripts/run_experiment_suite.py \
+  --suite configs/experiments/h_residual_densification.json \
+  --stage full \
+  --scene HCM0421 \
+  --iterations 20000 \
+  --seed 42 \
+  --only H0,H1a \
+  2>&1 | tee H_residual_HCM0421_20k.log
+```
+
+`H0` has a zero blend and is the same-subclass D1b control. `H1a` uses a
+0.5 blend. `H1b` uses the full priority redistribution and should only be run
+if H1a is stable but its score effect is too small. Do not promote this method
+to `auto_pipeline.py` until it beats H0 by at least 0.15 and repeats on a
+second scene.
