@@ -78,6 +78,54 @@ new experiment ID/tag, otherwise `run_local_validation.py` intentionally reuses
 the completed checkpoint under the old name. Use `--new-run` only when a
 timestamped duplicate is actually wanted.
 
+## Local-validation diagnostics
+
+`scripts/diagnose_local_validation.py` runs after an experiment has already
+been rendered and scored. It keeps the canonical evaluator unchanged and uses
+local ground truth to measure four diagnostic upper bounds:
+
+- integer shifts up to three pixels for camera/intrinsics alignment;
+- bounded per-image RGB gain and bias for exposure/white balance;
+- light Gaussian blur for aliasing or over-sharp rendering; and
+- Sobel edge versus flat-region error for thin-structure allocation.
+
+Run it with the same tag used by `run_local_validation.py`:
+
+```bash
+python scripts/diagnose_local_validation.py \
+  --scene HCM0421 \
+  --tag F0_staged_control_40k \
+  --device cuda
+```
+
+Or pass the complete experiment directory name:
+
+```bash
+python scripts/diagnose_local_validation.py \
+  --scene bonsai \
+  --experiment localval_bonsai_F0_staged_control_30k \
+  --device cuda
+```
+
+The default artifacts are written beside `metrics.json`:
+
+```text
+outputs/local_validation_reports/localval_<scene>_<tag>/
+├── diagnostics.json
+├── diagnostics_per_image.csv
+└── error_maps/
+```
+
+Each error panel is ordered `ground truth | prediction | absolute RGB error`.
+The corrected oracle metrics use ground truth and are diagnostic only; they
+must never be copied into a competition submission. Use these decision gates:
+
+- global/per-image shift gain `>= 0.5`: audit camera conversion or pose;
+- affine RGB gain `>= 0.3`: revisit appearance/exposure;
+- global blur gain `>= 0.2`: investigate Mip-Splatting-style filtering;
+- edge-error concentration `>= 1.25x`: prioritize residual/edge-aware
+  densification.
+
 ## Custom edge-loss method
 
 The repo provides `splatfacto-edge`, a package-owned extension of Nerfstudio
