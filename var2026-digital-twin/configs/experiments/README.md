@@ -1,5 +1,9 @@
 # Experiment suites
 
+Radical gated experiments are isolated under `configs/experiments/radical`.
+Use `scripts/run_radical_suite.py` for those runs so the additional environment,
+artifact, VRAM, and gate manifest is recorded.
+
 `scripts/run_experiment_suite.py` reads a JSON suite and invokes
 `scripts/run_local_validation.py` once per enabled experiment. Jobs are
 sequential, so one suite is safe to use on one GPU.

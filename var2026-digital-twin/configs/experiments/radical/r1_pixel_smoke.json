@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "radical_r1_pixel_smoke",
+  "description": "P1 smoke run long enough to cross at least two post-warmup refinement callbacks.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-pixel",
+    "iterations": 1000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.0",
+      "--pipeline.model.use-pixel-aware-gradient", "True",
+      "--pipeline.model.pixel-grad-use-distance-scaling", "True",
+      "--pipeline.model.pixel-grad-gamma-depth", "0.37",
+      "--pipeline.model.pixel-grad-scene-radius", "1.0"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "P1S",
+      "description": "Pixel-aware density smoke run.",
+      "tag": "P1S_pixel_smoke_{budget}{seed_suffix}"
+    }
+  ]
+}

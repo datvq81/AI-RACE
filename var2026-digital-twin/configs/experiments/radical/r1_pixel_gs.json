@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "name": "radical_r1_pixel_gs",
+  "description": "Same-code P0/P1 test of Pixel-GS density statistics on D1b.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-pixel",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.03",
+      "--pipeline.model.lpips-loss-start-step", "6000",
+      "--pipeline.model.pixel-grad-use-distance-scaling", "True",
+      "--pipeline.model.pixel-grad-gamma-depth", "0.37",
+      "--pipeline.model.pixel-grad-scene-radius", "1.0"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "P0",
+      "description": "D1b same-subclass control with stock equal-view averaging.",
+      "tag": "P0_pixel_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-pixel-aware-gradient", "False"
+      ]
+    },
+    {
+      "id": "P1",
+      "description": "Coverage-weighted AbsGrad with Pixel-GS depth scaling.",
+      "tag": "P1_pixel_coverage_depth_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-pixel-aware-gradient", "True"
+      ]
+    }
+  ],
+  "radical_gate": {
+    "requirements": [
+      {
+        "kind": "render_count_matches",
+        "runs": ["P0", "P1"]
+      },
+      {
+        "kind": "score_delta_min",
+        "baseline": "P0",
+        "candidate": "P1",
+        "value": 0.20
+      }
+    ]
+  }
+}

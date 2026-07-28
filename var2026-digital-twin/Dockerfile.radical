@@ -1,0 +1,25 @@
+FROM pytorch/pytorch:2.1.2-cuda11.8-cudnn8-devel
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV FORCE_CUDA=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && python -m pip install --no-cache-dir \
+        "nerfstudio==1.1.4" \
+        "gsplat==1.0.0" \
+        opencv-python \
+        torchmetrics \
+        lpips
+
+WORKDIR /workspace
+
+# Source and data are mounted by docker-compose.radical.yml. Installation is
+# performed at container start so editable entry points match the exact checkout.
+CMD ["bash", "-lc", "python -m pip install --no-deps --editable . && bash"]

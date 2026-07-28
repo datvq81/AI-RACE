@@ -17,6 +17,7 @@ from var_nvs.directional_background_splatfacto import (
 from var_nvs.edge_splatfacto import EdgeSplatfactoModelConfig
 from var_nvs.perceptual_splatfacto import PerceptualSplatfactoModelConfig
 from var_nvs.pose_exposure_splatfacto import PoseExposureSplatfactoModelConfig
+from var_nvs.radical.pixel_splatfacto import PixelGradientSplatfactoModelConfig
 from var_nvs.residual_densification_splatfacto import (
     ResidualDensificationSplatfactoModelConfig,
 )
@@ -168,4 +169,12 @@ splatfacto_residual = MethodSpecification(
         ResidualDensificationSplatfactoModelConfig(**_base_model_options()),
     ),
     description="D1b with bounded residual/edge-aware AbsGrad allocation.",
+)
+
+splatfacto_pixel = MethodSpecification(
+    config=_splatfacto_big_config(
+        "splatfacto-pixel",
+        PixelGradientSplatfactoModelConfig(**_base_model_options()),
+    ),
+    description="D1b with optional Pixel-GS coverage-weighted density control.",
 )

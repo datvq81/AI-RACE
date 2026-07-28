@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "name": "radical_r0_control",
+  "description": "Repeated D1b controls through the unchanged validation renderer and scorer.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-perceptual",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.03",
+      "--pipeline.model.lpips-loss-start-step", "6000"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "R0C0",
+      "description": "First locked D1b radical control.",
+      "tag": "R0C0_d1b_control_{budget}{seed_suffix}"
+    },
+    {
+      "id": "R0C1",
+      "description": "Exact repeated D1b control for the reproducibility gate.",
+      "tag": "R0C1_d1b_repeat_{budget}{seed_suffix}"
+    }
+  ],
+  "radical_gate": {
+    "requirements": [
+      {
+        "kind": "render_count_matches",
+        "runs": ["R0C0", "R0C1"]
+      },
+      {
+        "kind": "score_abs_delta_max",
+        "baseline": "R0C0",
+        "candidate": "R0C1",
+        "value": 0.10
+      }
+    ]
+  }
+}
