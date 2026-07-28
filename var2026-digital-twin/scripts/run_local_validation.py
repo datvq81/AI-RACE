@@ -6,6 +6,7 @@ import argparse
 import re
 import subprocess
 import sys
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -29,19 +30,63 @@ def _safe_name(value: str, label: str) -> str:
     return value
 
 
-def _complete_configs(experiment_name: str) -> list[Path]:
+CHECKPOINT_STEP = re.compile(r"step-(\d+)\.ckpt$")
+
+
+def _checkpoint_step(path: Path) -> int | None:
+    match = CHECKPOINT_STEP.fullmatch(path.name)
+    return int(match.group(1)) if match else None
+
+
+def _checkpoint_archive_is_readable(path: Path) -> tuple[bool, str]:
+    """Quickly reject checkpoints truncated by an interrupted/disk-full save."""
+    try:
+        if path.stat().st_size == 0:
+            return False, "file is empty"
+        with zipfile.ZipFile(path) as archive:
+            names = archive.namelist()
+            data_pickles = [name for name in names if name.endswith("/data.pkl")]
+            if not data_pickles:
+                return False, "PyTorch data.pkl entry is missing"
+            # Opening the metadata record catches an invalid local file header
+            # without loading every tensor in a potentially multi-GB checkpoint.
+            with archive.open(data_pickles[0]) as data_file:
+                data_file.read(1)
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile, RuntimeError) as error:
+        return False, str(error)
+    return True, "ok"
+
+
+def _complete_configs(experiment_name: str, minimum_step: int) -> list[Path]:
     experiment_dir = PROJECT_ROOT / "outputs" / experiment_name
     configs = sorted(
         experiment_dir.glob("**/config.yml") if experiment_dir.is_dir() else [],
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
-    return [
-        config
-        for config in configs
-        if (config.parent / "nerfstudio_models").is_dir()
-        and any((config.parent / "nerfstudio_models").glob("*.ckpt"))
-    ]
+    complete: list[Path] = []
+    for config in configs:
+        model_dir = config.parent / "nerfstudio_models"
+        checkpoints = [
+            (step, checkpoint)
+            for checkpoint in model_dir.glob("*.ckpt")
+            if (step := _checkpoint_step(checkpoint)) is not None
+        ] if model_dir.is_dir() else []
+        if not checkpoints:
+            continue
+        step, checkpoint = max(checkpoints, key=lambda item: item[0])
+        if step < minimum_step:
+            print(
+                f"[WARN] Ignoring incomplete run at step {step}; "
+                f"need at least {minimum_step}: {config}"
+            )
+            continue
+        readable, reason = _checkpoint_archive_is_readable(checkpoint)
+        if not readable:
+            print(f"[WARN] Ignoring unreadable checkpoint ({reason}): {checkpoint}")
+            continue
+        complete.append(config)
+    return complete
 
 
 def _contains_option(arguments: list[str], option: str) -> bool:
@@ -78,7 +123,7 @@ def run_experiment(arguments: argparse.Namespace) -> Path:
     else:
         print(f"[SKIP] Reusing local split: {validation_scene}")
 
-    configs = _complete_configs(experiment_name)
+    configs = _complete_configs(experiment_name, minimum_step=arguments.iterations - 1)
     if arguments.eval_only and arguments.new_run:
         raise ValueError("--eval-only cannot be combined with --new-run")
     if configs and arguments.new_run:
@@ -115,7 +160,10 @@ def run_experiment(arguments: argparse.Namespace) -> Path:
         train_command.extend(extra_train_args)
         train_command.extend(["--data", str(validation_scene)])
         _run(train_command)
-        configs = _complete_configs(experiment_name)
+        configs = _complete_configs(
+            experiment_name,
+            minimum_step=arguments.iterations - 1,
+        )
         if not configs:
             raise RuntimeError(f"Training ended but no complete checkpoint was found for {experiment_name}")
         config = configs[0]
