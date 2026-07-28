@@ -80,3 +80,18 @@ python scripts/run_radical_suite.py \
 
 R2 is intentionally not started. It is allowed only if the generated manifest
 reports `P1 - P0 >= +0.20` on HCM0421.
+
+## Empirical update - 2026-07-28
+
+- R0 repeated-control gate passed.
+- P1 smoke training completed.
+- P0 score: `72.310275`, 3,173,337 Gaussians, 10,323 MiB peak device memory.
+- P1 score: `72.468252`, 4,297,014 Gaussians, 14,051 MiB peak device memory.
+- P1 improved all three component metrics, but its `+0.157978` score delta
+  missed the required `+0.20` gate.
+- The HCM0421 camera radius measured after the saved Nerfstudio dataparser
+  transform and scale is `1.612979536`, rather than the initial placeholder
+  `1.0`.
+- `r1_pixel_gs_radius.json` defines P1R as a density-only retry using the
+  measured radius and a unique checkpoint tag. R2 remains blocked until P1R
+  passes the R1 gate.

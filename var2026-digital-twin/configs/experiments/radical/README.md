@@ -64,3 +64,14 @@ python scripts/run_radical_suite.py \
 thresholds, loss, and appearance settings. Only P1 enables coverage-weighted
 gradient accumulation and camera-depth scaling. R2 must not start unless
 `P1 - P0 >= 0.20` on HCM0421.
+
+If the initial P1 misses the gate, run the radius-calibrated density-only
+ablation. HCM0421's camera extent after Nerfstudio's dataparser transform and
+scale is `1.612979536`; P1R changes only that distance-scaling input and uses a
+new tag, while P0 keeps its original tag and checkpoint:
+
+```bash
+python scripts/run_radical_suite.py \
+  --suite configs/experiments/radical/r1_pixel_gs_radius.json \
+  --stage full
+```

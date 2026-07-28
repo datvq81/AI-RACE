@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "radical_r1_pixel_gs_radius",
+  "description": "R1 retry with the HCM0421 camera radius measured in post-dataparser training coordinates.",
+  "defaults": {
+    "scene": "HCM0421",
+    "method": "splatfacto-pixel",
+    "iterations": 20000,
+    "seed": 42,
+    "train_args": [
+      "--pipeline.model.sh-degree", "3",
+      "--pipeline.model.use-scale-regularization", "False",
+      "--pipeline.model.rasterize-mode", "classic",
+      "--pipeline.model.lpips-loss-weight", "0.03",
+      "--pipeline.model.lpips-loss-start-step", "6000",
+      "--pipeline.model.pixel-grad-use-distance-scaling", "True",
+      "--pipeline.model.pixel-grad-gamma-depth", "0.37"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "P0",
+      "description": "Existing D1b same-subclass control with stock equal-view averaging.",
+      "tag": "P0_pixel_control_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-pixel-aware-gradient", "False",
+        "--pipeline.model.pixel-grad-scene-radius", "1.0"
+      ]
+    },
+    {
+      "id": "P1R",
+      "description": "Coverage-weighted AbsGrad with the measured HCM0421 camera radius 1.612979536.",
+      "tag": "P1R_pixel_radius_calibrated_{budget}{seed_suffix}",
+      "train_args": [
+        "--pipeline.model.use-pixel-aware-gradient", "True",
+        "--pipeline.model.pixel-grad-scene-radius", "1.612979536"
+      ]
+    }
+  ],
+  "radical_gate": {
+    "requirements": [
+      {
+        "kind": "render_count_matches",
+        "runs": ["P0", "P1R"]
+      },
+      {
+        "kind": "score_delta_min",
+        "baseline": "P0",
+        "candidate": "P1R",
+        "value": 0.20
+      }
+    ]
+  }
+}
